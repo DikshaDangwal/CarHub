@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { Camera, Edit, X, Plus, Trash2, CreditCard, MapPin, Calendar, User, Car } from "lucide-react"
+import { Camera, Edit, X, Plus, Trash2, CreditCard, MapPin, Calendar, User, Car, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface UserProfile {
   id: string
@@ -53,6 +54,7 @@ interface RentalHistory {
 
 export default function ProfilePage() {
   const { toast } = useToast()
+  const { signOut } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("personal")
@@ -129,6 +131,22 @@ export default function ProfilePage() {
   })
 
   const [showAddPayment, setShowAddPayment] = useState(false)
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
 
   const handleProfileUpdate = async () => {
     setLoading(true)
@@ -281,14 +299,26 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <Button
-              onClick={() => setIsEditing(!isEditing)}
-              variant={isEditing ? "outline" : "default"}
-              className="flex items-center gap-2"
-            >
-              {isEditing ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
-              {isEditing ? "Cancel" : "Edit Profile"}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => setIsEditing(!isEditing)}
+                variant={isEditing ? "outline" : "default"}
+                className="flex items-center gap-2"
+              >
+                {isEditing ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+                {isEditing ? "Cancel" : "Edit Profile"}
+              </Button>
+
+              {/* Logout Button in Profile */}
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </motion.div>
 
@@ -597,7 +627,15 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="pt-6 border-t">
+                <div className="pt-6 border-t space-y-4">
+                  <Button
+                    onClick={handleSignOut}
+                    variant="outline"
+                    className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </Button>
                   <Button variant="destructive">Delete Account</Button>
                 </div>
               </CardContent>

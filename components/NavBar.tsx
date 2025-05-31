@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, User, LogOut, Settings, Car } from "lucide-react"
+import { Menu, X, User, LogOut, Settings, Car, Home, Phone, HelpCircle, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -22,11 +22,11 @@ const NavBar = () => {
   const { user, loading, signOut } = useAuth()
 
   const navigation = [
-    { name: "Home", href: "/" },
-    { name: "Cars", href: "/cars" },
-    { name: "About", href: "/about" },
-    { name: "Contact", href: "/contact" },
-    { name: "Help", href: "/help" },
+    { name: "Home", href: "/", icon: <Home className="w-4 h-4 mr-2" /> },
+    { name: "Cars", href: "/cars", icon: <Car className="w-4 h-4 mr-2" /> },
+    { name: "About", href: "/about", icon: <Info className="w-4 h-4 mr-2" /> },
+    { name: "Contact", href: "/contact", icon: <Phone className="w-4 h-4 mr-2" /> },
+    { name: "Help", href: "/help", icon: <HelpCircle className="w-4 h-4 mr-2" /> },
   ]
 
   const isActive = (href: string) => {
@@ -56,80 +56,54 @@ const NavBar = () => {
         <Logo />
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-8">
+        <div className="hidden md:flex items-center space-x-4">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
+              className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 flex items-center ${
                 isActive(item.href) ? "text-blue-600" : "text-gray-700"
               }`}
             >
               {item.name}
             </Link>
           ))}
-          {/* Authenticated User Navigation Buttons */}
+
+          {/* User Navigation - Only show when logged in */}
           {user && (
-            <div className="hidden md:flex items-center space-x-4 ml-8">
+            <>
+              <div className="h-6 w-px bg-gray-200 mx-2"></div>
               <Link
                 href="/dashboard"
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  pathname === "/dashboard"
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                  isActive("/dashboard")
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 }`}
               >
-                <Car className="w-4 h-4" />
-                <span>Dashboard</span>
+                <Car className="w-4 h-4 mr-2" />
+                Dashboard
               </Link>
               <Link
                 href="/profile"
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  pathname === "/profile"
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                  isActive("/profile") ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 }`}
               >
-                <User className="w-4 h-4" />
-                <span>Profile</span>
+                <User className="w-4 h-4 mr-2" />
+                Profile
               </Link>
-            </div>
+            </>
           )}
         </div>
 
         {/* Desktop Actions */}
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="hidden md:flex items-center space-x-3">
           {loading ? (
             <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
           ) : user ? (
-            // Authenticated User Navigation
+            // Authenticated User Actions
             <div className="flex items-center space-x-3">
-              {/* Dashboard Button */}
-              <Link
-                href="/dashboard"
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  pathname === "/dashboard"
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                }`}
-              >
-                <Car className="w-4 h-4" />
-                <span>Dashboard</span>
-              </Link>
-
-              {/* Profile Button */}
-              <Link
-                href="/profile"
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  pathname === "/profile"
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                }`}
-              >
-                <User className="w-4 h-4" />
-                <span>Profile</span>
-              </Link>
-
               {/* User Avatar with Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -151,15 +125,21 @@ const NavBar = () => {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center space-x-2">
-                      <Settings className="w-4 h-4" />
-                      <span>Account Settings</span>
+                    <Link href="/dashboard" className="flex items-center space-x-2">
+                      <Car className="w-4 h-4" />
+                      <span>Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/help" className="flex items-center space-x-2">
+                    <Link href="/profile" className="flex items-center space-x-2">
                       <User className="w-4 h-4" />
-                      <span>Help & Support</span>
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center space-x-2">
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -173,7 +153,7 @@ const NavBar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Quick Logout Button */}
+              {/* Logout Button */}
               <Button
                 onClick={handleSignOut}
                 variant="outline"
@@ -185,29 +165,17 @@ const NavBar = () => {
               </Button>
             </div>
           ) : (
-            // Guest User Menu (keep existing)
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center space-x-2">
-                  <User className="w-4 h-4" />
-                  <span>Account</span>
+            // Guest User Menu
+            <div className="flex items-center space-x-3">
+              <Link href="/auth/signin">
+                <Button variant="outline" size="sm">
+                  Sign In
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link href="/auth/signin" className="flex items-center space-x-2">
-                    <User className="w-4 h-4" />
-                    <span>Sign In</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/auth/signup" className="flex items-center space-x-2">
-                    <User className="w-4 h-4" />
-                    <span>Sign Up</span>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </Link>
+              <Link href="/auth/signup">
+                <Button size="sm">Sign Up</Button>
+              </Link>
+            </div>
           )}
         </div>
 
@@ -229,18 +197,19 @@ const NavBar = () => {
                 key={item.name}
                 href={item.href}
                 onClick={() => setIsMenuOpen(false)}
-                className={`block text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
+                className={`flex items-center text-sm font-medium transition-colors duration-200 hover:text-blue-600 py-2 ${
                   isActive(item.href) ? "text-blue-600" : "text-gray-700"
                 }`}
               >
+                {item.icon}
                 {item.name}
               </Link>
             ))}
 
-            {/* Mobile Authenticated User Buttons */}
+            {/* Mobile User Navigation */}
             {user && (
-              <div className="space-y-3 pt-4 border-t border-gray-100">
-                <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg mb-4">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.user_metadata?.avatar_url || "/placeholder.svg"} alt={user.email || ""} />
                     <AvatarFallback className="bg-blue-600 text-white text-sm">
@@ -253,14 +222,12 @@ const NavBar = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3 mb-4">
                   <Link
                     href="/dashboard"
                     onClick={() => setIsMenuOpen(false)}
                     className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      pathname === "/dashboard"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                      isActive("/dashboard") ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"
                     }`}
                   >
                     <Car className="w-4 h-4" />
@@ -270,9 +237,7 @@ const NavBar = () => {
                     href="/profile"
                     onClick={() => setIsMenuOpen(false)}
                     className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      pathname === "/profile"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                      isActive("/profile") ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 hover:bg-blue-100"
                     }`}
                   >
                     <User className="w-4 h-4" />
@@ -290,68 +255,25 @@ const NavBar = () => {
               </div>
             )}
 
-            <div className="pt-4 border-t border-gray-100 space-y-2">
-              {loading ? (
-                <div className="w-full h-8 rounded bg-gray-200 animate-pulse" />
-              ) : user ? (
-                // Authenticated Mobile Menu
-                <>
-                  <div className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.user_metadata?.avatar_url || "/placeholder.svg"} alt={user.email || ""} />
-                      <AvatarFallback className="bg-blue-600 text-white text-sm">
-                        {user.email ? getUserInitials(user.email) : "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <p className="text-sm font-medium">{user.user_metadata?.full_name || "User"}</p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/profile"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200 p-2"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Profile</span>
-                  </Link>
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200 p-2"
-                  >
-                    <Car className="w-4 h-4" />
-                    <span>Dashboard</span>
-                  </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center space-x-2 text-sm font-medium text-red-600 hover:text-red-700 transition-colors duration-200 p-2 w-full text-left"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Sign Out</span>
-                  </button>
-                </>
-              ) : (
-                // Guest Mobile Menu
-                <>
-                  <Link
-                    href="/auth/signin"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="block text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200"
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    href="/auth/signup"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="block text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </div>
+            {/* Mobile Guest Options */}
+            {!user && !loading && (
+              <div className="pt-4 border-t border-gray-100 grid grid-cols-2 gap-3">
+                <Link
+                  href="/auth/signin"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center justify-center px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center justify-center px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
