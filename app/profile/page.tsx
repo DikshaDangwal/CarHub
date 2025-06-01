@@ -1,647 +1,303 @@
 "use client"
 
-import { useState } from "react"
-import Image from "next/image"
-import { motion } from "framer-motion"
-import { Camera, Edit, X, Plus, Trash2, CreditCard, MapPin, Calendar, User, Car, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/AuthContext"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
 
-interface UserProfile {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  address: string
-  driverLicense: string
-  birthDate: string
-  preferredCarType: string
-  avatar: string
-  memberSince: string
-  totalBookings: number
-  totalSpent: number
-  favoriteVehicles: number
-}
-
-interface PaymentMethod {
-  id: string
-  type: "credit" | "debit" | "paypal"
-  cardNumber: string
-  expiryDate: string
-  cardholderName: string
-  isDefault: boolean
-}
-
-interface RentalHistory {
-  id: string
-  carMake: string
-  carModel: string
-  carYear: number
-  carImage: string
-  startDate: string
-  endDate: string
-  totalAmount: number
-  status: "completed" | "active" | "cancelled" | "upcoming"
-  location: string
-}
-
-export default function ProfilePage() {
-  const { toast } = useToast()
-  const { signOut } = useAuth()
+export default function Profile() {
+  const { user, userProfile, loading, updateProfile, signOut } = useAuth()
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState("personal")
-
-  const [profile, setProfile] = useState<UserProfile>({
-    id: "user_123",
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Main Street, New York, NY 10001",
-    driverLicense: "DL12345678",
-    birthDate: "1990-01-15",
-    preferredCarType: "SUV",
-    avatar: "/placeholder.svg?height=200&width=200",
-    memberSince: "January 2023",
-    totalBookings: 12,
-    totalSpent: 2450,
-    favoriteVehicles: 5,
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    bio: "",
+    city: "",
+    state: "",
+    country: "",
   })
+  const [updating, setUpdating] = useState(false)
+  const [message, setMessage] = useState("")
 
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-    {
-      id: "pm_1",
-      type: "credit",
-      cardNumber: "**** **** **** 4242",
-      expiryDate: "12/25",
-      cardholderName: "John Doe",
-      isDefault: true,
-    },
-    {
-      id: "pm_2",
-      type: "paypal",
-      cardNumber: "john.doe@example.com",
-      expiryDate: "",
-      cardholderName: "John Doe",
-      isDefault: false,
-    },
-  ])
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/signin")
+    }
+  }, [user, loading, router])
 
-  const [rentalHistory, setRentalHistory] = useState<RentalHistory[]>([
-    {
-      id: "rental_1",
-      carMake: "BMW",
-      carModel: "M3",
-      carYear: 2023,
-      carImage: "/placeholder.svg?height=60&width=100",
-      startDate: "2024-01-15",
-      endDate: "2024-01-20",
-      totalAmount: 450,
-      status: "completed",
-      location: "New York, NY",
-    },
-    {
-      id: "rental_2",
-      carMake: "Tesla",
-      carModel: "Model 3",
-      carYear: 2023,
-      carImage: "/placeholder.svg?height=60&width=100",
-      startDate: "2024-02-10",
-      endDate: "2024-02-15",
-      totalAmount: 520,
-      status: "upcoming",
-      location: "Los Angeles, CA",
-    },
-  ])
+  useEffect(() => {
+    if (userProfile) {
+      setFormData({
+        first_name: userProfile.first_name || "",
+        last_name: userProfile.last_name || "",
+        phone: userProfile.phone || "",
+        bio: userProfile.bio || "",
+        city: userProfile.city || "",
+        state: userProfile.state || "",
+        country: userProfile.country || "",
+      })
+    }
+  }, [userProfile])
 
-  const [newPaymentMethod, setNewPaymentMethod] = useState({
-    type: "credit" as "credit" | "debit" | "paypal",
-    cardNumber: "",
-    expiryDate: "",
-    cardholderName: "",
-    cvv: "",
-  })
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    })
+  }
 
-  const [showAddPayment, setShowAddPayment] = useState(false)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setUpdating(true)
+    setMessage("")
 
-  const handleSignOut = async () => {
+    try {
+      const updates = {
+        ...formData,
+        full_name: `${formData.first_name} ${formData.last_name}`.trim(),
+      }
+
+      await updateProfile(updates)
+      setMessage("Profile updated successfully!")
+      setIsEditing(false)
+    } catch (error) {
+      setMessage("Error updating profile. Please try again.")
+      console.error("Profile update error:", error)
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleLogout = async () => {
     try {
       await signOut()
-      toast({
-        title: "Signed Out",
-        description: "You have been successfully signed out.",
-      })
+      router.push("/")
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      })
+      console.error("Logout error:", error)
     }
   }
 
-  const handleProfileUpdate = async () => {
-    setLoading(true)
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      setIsEditing(false)
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAddPaymentMethod = async () => {
-    if (!newPaymentMethod.cardNumber || !newPaymentMethod.cardholderName) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const newMethod: PaymentMethod = {
-      id: `pm_${Date.now()}`,
-      type: newPaymentMethod.type,
-      cardNumber:
-        newPaymentMethod.type === "paypal"
-          ? newPaymentMethod.cardNumber
-          : `**** **** **** ${newPaymentMethod.cardNumber.slice(-4)}`,
-      expiryDate: newPaymentMethod.expiryDate,
-      cardholderName: newPaymentMethod.cardholderName,
-      isDefault: paymentMethods.length === 0,
-    }
-
-    setPaymentMethods([...paymentMethods, newMethod])
-    setNewPaymentMethod({
-      type: "credit",
-      cardNumber: "",
-      expiryDate: "",
-      cardholderName: "",
-      cvv: "",
-    })
-    setShowAddPayment(false)
-
-    toast({
-      title: "Payment Method Added",
-      description: "Your payment method has been successfully added.",
-    })
-  }
-
-  const handleDeletePaymentMethod = (id: string) => {
-    setPaymentMethods(paymentMethods.filter((method) => method.id !== id))
-    toast({
-      title: "Payment Method Removed",
-      description: "Payment method has been successfully removed.",
-    })
-  }
-
-  const handleSetDefaultPayment = (id: string) => {
-    setPaymentMethods(
-      paymentMethods.map((method) => ({
-        ...method,
-        isDefault: method.id === id,
-      })),
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
     )
-    toast({
-      title: "Default Payment Updated",
-      description: "Default payment method has been updated.",
-    })
   }
 
-  const handleCancelRental = (id: string) => {
-    setRentalHistory(rentalHistory.map((rental) => (rental.id === id ? { ...rental, status: "cancelled" } : rental)))
-    toast({
-      title: "Rental Cancelled",
-      description: "Your rental has been successfully cancelled.",
-    })
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800"
-      case "active":
-        return "bg-blue-100 text-blue-800"
-      case "upcoming":
-        return "bg-yellow-100 text-yellow-800"
-      case "cancelled":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
+  if (!user) {
+    return null
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Profile Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-sm p-6 mb-8"
-        >
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200">
-                <Image
-                  src={profile.avatar || "/placeholder.svg"}
-                  alt="Profile"
-                  width={96}
-                  height={96}
-                  className="w-full h-full object-cover"
-                />
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white shadow rounded-lg">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+              <div className="flex space-x-3">
+                {!isEditing ? (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Edit Profile
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Logout
+                </button>
               </div>
-              <button className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors">
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 text-center md:text-left">
-              <h1 className="text-3xl font-bold text-gray-900">
-                {profile.firstName} {profile.lastName}
-              </h1>
-              <p className="text-gray-600">Member since {profile.memberSince}</p>
-
-              <div className="flex flex-wrap gap-4 mt-4 justify-center md:justify-start">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{profile.totalBookings}</div>
-                  <div className="text-sm text-gray-600">Total Bookings</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">${profile.totalSpent}</div>
-                  <div className="text-sm text-gray-600">Total Spent</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{profile.favoriteVehicles}</div>
-                  <div className="text-sm text-gray-600">Favorites</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => setIsEditing(!isEditing)}
-                variant={isEditing ? "outline" : "default"}
-                className="flex items-center gap-2"
-              >
-                {isEditing ? <X className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
-                {isEditing ? "Cancel" : "Edit Profile"}
-              </Button>
-
-              {/* Logout Button in Profile */}
-              <Button
-                onClick={handleSignOut}
-                variant="outline"
-                className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </Button>
             </div>
           </div>
-        </motion.div>
 
-        {/* Profile Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="personal">Personal Info</TabsTrigger>
-            <TabsTrigger value="payment">Payment Methods</TabsTrigger>
-            <TabsTrigger value="rentals">Rental History</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+          {/* Profile Content */}
+          <div className="px-6 py-6">
+            {message && (
+              <div
+                className={`mb-4 p-4 rounded-md ${
+                  message.includes("Error") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+                }`}
+              >
+                {message}
+              </div>
+            )}
 
-          {/* Personal Information Tab */}
-          <TabsContent value="personal">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Personal Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={profile.firstName}
-                      onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
-                      disabled={!isEditing}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Profile Picture & Basic Info */}
+              <div className="lg:col-span-1">
+                <div className="text-center">
+                  <div className="relative mx-auto h-32 w-32">
+                    <Image
+                      src={userProfile?.profile_image_url || "/placeholder.svg?height=128&width=128"}
+                      alt="Profile"
+                      fill
+                      className="rounded-full object-cover"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={profile.lastName}
-                      onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={profile.address}
-                      onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="driverLicense">Driver's License</Label>
-                    <Input
-                      id="driverLicense"
-                      value={profile.driverLicense}
-                      onChange={(e) => setProfile({ ...profile, driverLicense: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="birthDate">Birth Date</Label>
-                    <Input
-                      id="birthDate"
-                      type="date"
-                      value={profile.birthDate}
-                      onChange={(e) => setProfile({ ...profile, birthDate: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
+                  <h2 className="mt-4 text-xl font-semibold text-gray-900">{userProfile?.full_name || "User"}</h2>
+                  <p className="text-gray-600">{userProfile?.email}</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Member since{" "}
+                    {userProfile?.created_at ? new Date(userProfile.created_at).toLocaleDateString() : "N/A"}
+                  </p>
                 </div>
+              </div>
 
-                {isEditing && (
-                  <div className="flex justify-end">
-                    <Button onClick={handleProfileUpdate} disabled={loading}>
-                      {loading ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Payment Methods Tab */}
-          <TabsContent value="payment">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    Payment Methods
-                  </CardTitle>
-                  <Button onClick={() => setShowAddPayment(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Payment Method
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {paymentMethods.map((method) => (
-                  <div key={method.id} className="border rounded-lg p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <CreditCard className="w-6 h-6 text-gray-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium">
-                          {method.type === "paypal"
-                            ? "PayPal"
-                            : `${method.type.charAt(0).toUpperCase() + method.type.slice(1)} Card`}
-                          {method.isDefault && (
-                            <Badge variant="secondary" className="ml-2">
-                              Default
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-600">{method.cardNumber}</div>
-                        {method.expiryDate && <div className="text-sm text-gray-600">Expires: {method.expiryDate}</div>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!method.isDefault && (
-                        <Button variant="outline" size="sm" onClick={() => handleSetDefaultPayment(method.id)}>
-                          Set Default
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm" onClick={() => handleDeletePaymentMethod(method.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add Payment Method Form */}
-                {showAddPayment && (
-                  <div className="border rounded-lg p-4 bg-gray-50">
-                    <h3 className="font-medium mb-4">Add New Payment Method</h3>
+              {/* Profile Details */}
+              <div className="lg:col-span-2">
+                {isEditing ? (
+                  <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="cardNumber">Card Number / Email</Label>
-                        <Input
-                          id="cardNumber"
-                          value={newPaymentMethod.cardNumber}
-                          onChange={(e) => setNewPaymentMethod({ ...newPaymentMethod, cardNumber: e.target.value })}
-                          placeholder={newPaymentMethod.type === "paypal" ? "email@example.com" : "1234 5678 9012 3456"}
+                        <label className="block text-sm font-medium text-gray-700">First Name</label>
+                        <input
+                          type="text"
+                          name="first_name"
+                          value={formData.first_name}
+                          onChange={handleChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="cardholderName">Cardholder Name</Label>
-                        <Input
-                          id="cardholderName"
-                          value={newPaymentMethod.cardholderName}
-                          onChange={(e) => setNewPaymentMethod({ ...newPaymentMethod, cardholderName: e.target.value })}
+                        <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                        <input
+                          type="text"
+                          name="last_name"
+                          value={formData.last_name}
+                          onChange={handleChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
-                      {newPaymentMethod.type !== "paypal" && (
-                        <>
-                          <div>
-                            <Label htmlFor="expiryDate">Expiry Date</Label>
-                            <Input
-                              id="expiryDate"
-                              value={newPaymentMethod.expiryDate}
-                              onChange={(e) => setNewPaymentMethod({ ...newPaymentMethod, expiryDate: e.target.value })}
-                              placeholder="MM/YY"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="cvv">CVV</Label>
-                            <Input
-                              id="cvv"
-                              value={newPaymentMethod.cvv}
-                              onChange={(e) => setNewPaymentMethod({ ...newPaymentMethod, cvv: e.target.value })}
-                              placeholder="123"
-                            />
-                          </div>
-                        </>
-                      )}
                     </div>
-                    <div className="flex justify-end gap-2 mt-4">
-                      <Button variant="outline" onClick={() => setShowAddPayment(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleAddPaymentMethod}>Add Payment Method</Button>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Phone</label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      />
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">City</label>
+                        <input
+                          type="text"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">State</label>
+                        <input
+                          type="text"
+                          name="state"
+                          value={formData.state}
+                          onChange={handleChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Country</label>
+                        <input
+                          type="text"
+                          name="country"
+                          value={formData.country}
+                          onChange={handleChange}
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Bio</label>
+                      <textarea
+                        name="bio"
+                        rows={4}
+                        value={formData.bio}
+                        onChange={handleChange}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Tell us about yourself..."
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={updating}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      >
+                        {updating ? "Updating..." : "Save Changes"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">First Name</h3>
+                        <p className="mt-1 text-sm text-gray-900">{userProfile?.first_name || "Not provided"}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">Last Name</h3>
+                        <p className="mt-1 text-sm text-gray-900">{userProfile?.last_name || "Not provided"}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">Email</h3>
+                        <p className="mt-1 text-sm text-gray-900">{userProfile?.email}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">Phone</h3>
+                        <p className="mt-1 text-sm text-gray-900">{userProfile?.phone || "Not provided"}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">Location</h3>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {[userProfile?.city, userProfile?.state, userProfile?.country].filter(Boolean).join(", ") ||
+                            "Not provided"}
+                        </p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">Account Status</h3>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {userProfile?.email_verified ? "Verified" : "Unverified"}
+                        </p>
+                      </div>
+                    </div>
+                    {userProfile?.bio && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500">Bio</h3>
+                        <p className="mt-1 text-sm text-gray-900">{userProfile.bio}</p>
+                      </div>
+                    )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Rental History Tab */}
-          <TabsContent value="rentals">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Car className="w-5 h-5" />
-                  Rental History
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {rentalHistory.map((rental) => (
-                    <div key={rental.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <Image
-                            src={rental.carImage || "/placeholder.svg"}
-                            alt={`${rental.carMake} ${rental.carModel}`}
-                            width={100}
-                            height={60}
-                            className="rounded-lg object-cover"
-                          />
-                          <div>
-                            <h3 className="font-medium">
-                              {rental.carMake} {rental.carModel} {rental.carYear}
-                            </h3>
-                            <p className="text-sm text-gray-600 flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              {rental.location}
-                            </p>
-                            <p className="text-sm text-gray-600 flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              {rental.startDate} to {rental.endDate}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-lg">${rental.totalAmount}</div>
-                          <Badge className={getStatusColor(rental.status)}>
-                            {rental.status.charAt(0).toUpperCase() + rental.status.slice(1)}
-                          </Badge>
-                          {rental.status === "upcoming" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-2"
-                              onClick={() => handleCancelRental(rental.id)}
-                            >
-                              Cancel
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Settings Tab */}
-          <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h3 className="font-medium mb-4">Notifications</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Email Notifications</div>
-                        <div className="text-sm text-gray-600">Receive booking confirmations and updates</div>
-                      </div>
-                      <input type="checkbox" defaultChecked className="toggle" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">SMS Notifications</div>
-                        <div className="text-sm text-gray-600">Receive text messages for urgent updates</div>
-                      </div>
-                      <input type="checkbox" className="toggle" />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-4">Privacy</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">Profile Visibility</div>
-                        <div className="text-sm text-gray-600">Allow others to see your profile</div>
-                      </div>
-                      <input type="checkbox" defaultChecked className="toggle" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t space-y-4">
-                  <Button
-                    onClick={handleSignOut}
-                    variant="outline"
-                    className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </Button>
-                  <Button variant="destructive">Delete Account</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

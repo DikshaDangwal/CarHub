@@ -4,17 +4,22 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 import type { User } from "@supabase/supabase-js"
+import { getUserProfile, createUserProfile, type UserProfile } from "@/lib/database"
 
 interface AuthContextType {
   user: User | null
+  userProfile: UserProfile | null
   loading: boolean
   signOut: () => Promise<void>
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
 
@@ -42,10 +47,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const {
           data: { user },
         } = await supabase.auth.getUser()
+
         setUser(user)
+
+        if (user) {
+          // Fetch user profile from database
+          const { data: profile } = await getUserProfile(user.id)
+          setUserProfile(profile)
+        } else {
+          setUserProfile(null)
+        }
       } catch (error) {
         console.error("Error getting user:", error)
         setUser(null)
+        setUserProfile(null)
       } finally {
         setLoading(false)
       }
@@ -57,6 +72,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
+
+      if (session?.user) {
+        // Fetch or create user profile
+        let { data: profile } = await getUserProfile(session.user.id)
+
+        // If profile doesn't exist, create one
+        if (!profile) {
+          const newProfile = {
+            auth_id: session.user.id,
+            email: session.user.email!,
+            first_name: session.user.user_metadata?.first_name || "",
+            last_name: session.user.user_metadata?.last_name || "",
+            full_name:
+              session.user.user_metadata?.full_name ||
+              `${session.user.user_metadata?.first_name || ""} ${session.user.user_metadata?.last_name || ""}`.trim(),
+            email_verified: session.user.email_confirmed_at ? true : false,
+          }
+
+          const { data: createdProfile } = await createUserProfile(newProfile)
+          profile = createdProfile
+        }
+
+        setUserProfile(profile)
+      } else {
+        setUserProfile(null)
+      }
+
       setLoading(false)
     })
 
@@ -76,8 +118,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const supabase = createClient(supabaseUrl, supabaseKey)
       await supabase.auth.signOut()
       setUser(null)
+      setUserProfile(null)
     } catch (error) {
       console.error("Error signing out:", error)
+    }
+  }
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) return
+
+    try {
+      const { updateUserProfile } = await import("@/lib/database")
+      const { data } = await updateUserProfile(user.id, updates)
+      if (data) {
+        setUserProfile(data)
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      throw error
+    }
+  }
+
+  const refreshProfile = async () => {
+    if (!user) return
+
+    try {
+      const { data } = await getUserProfile(user.id)
+      setUserProfile(data)
+    } catch (error) {
+      console.error("Error refreshing profile:", error)
     }
   }
 
@@ -86,7 +155,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null
   }
 
-  return <AuthContext.Provider value={{ user, loading, signOut }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        userProfile,
+        loading,
+        signOut,
+        updateProfile,
+        refreshProfile,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => {

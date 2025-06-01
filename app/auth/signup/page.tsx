@@ -1,21 +1,24 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Check } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle, Loader2, Check, Phone } from "lucide-react"
 import Logo from "@/components/Logo"
+import { signUp } from "@/lib/auth"
+import { createUserProfile } from "@/lib/database"
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
-    subscribeNewsletter: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -23,19 +26,7 @@ export default function SignUp() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
-  const [passwordStrength, setPasswordStrength] = useState(0)
-
   const router = useRouter()
-
-  const calculatePasswordStrength = (password: string) => {
-    let strength = 0
-    if (password.length >= 8) strength += 1
-    if (/[a-z]/.test(password)) strength += 1
-    if (/[A-Z]/.test(password)) strength += 1
-    if (/[0-9]/.test(password)) strength += 1
-    if (/[^A-Za-z0-9]/.test(password)) strength += 1
-    return strength
-  }
 
   const validateField = (name: string, value: string) => {
     const errors: { [key: string]: string } = {}
@@ -60,6 +51,11 @@ export default function SignUp() {
           errors.email = "Email is required"
         } else if (!/\S+@\S+\.\S+/.test(value)) {
           errors.email = "Please enter a valid email address"
+        }
+        break
+      case "phone":
+        if (value && !/^\+?[\d\s\-$$$$]+$/.test(value)) {
+          errors.phone = "Please enter a valid phone number"
         }
         break
       case "password":
@@ -88,18 +84,13 @@ export default function SignUp() {
 
     setFormData((prev) => ({ ...prev, [name]: newValue }))
 
-    // Clear errors when user starts typing
     if (fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: "" }))
     }
     if (error) setError("")
 
-    // Real-time validation and password strength
     if (type !== "checkbox") {
       validateField(name, value)
-      if (name === "password") {
-        setPasswordStrength(calculatePasswordStrength(value))
-      }
       if (name === "confirmPassword" || (name === "password" && formData.confirmPassword)) {
         validateField("confirmPassword", name === "confirmPassword" ? value : formData.confirmPassword)
       }
@@ -116,10 +107,11 @@ export default function SignUp() {
     const firstNameValid = validateField("firstName", formData.firstName)
     const lastNameValid = validateField("lastName", formData.lastName)
     const emailValid = validateField("email", formData.email)
+    const phoneValid = !formData.phone || validateField("phone", formData.phone)
     const passwordValid = validateField("password", formData.password)
     const confirmPasswordValid = validateField("confirmPassword", formData.confirmPassword)
 
-    if (!firstNameValid || !lastNameValid || !emailValid || !passwordValid || !confirmPasswordValid) {
+    if (!firstNameValid || !lastNameValid || !emailValid || !phoneValid || !passwordValid || !confirmPasswordValid) {
       setLoading(false)
       return
     }
@@ -131,31 +123,48 @@ export default function SignUp() {
     }
 
     try {
-      // Simulate registration
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Sign up user with Supabase Auth
+      const { data, error } = await signUp(formData.email, formData.password, {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        full_name: `${formData.firstName} ${formData.lastName}`,
+        phone: formData.phone,
+      })
+
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      if (data.user) {
+        // Create user profile in database
+        const userProfile = {
+          auth_id: data.user.id,
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          phone: formData.phone,
+          email_verified: false,
+          is_active: true,
+        }
+
+        const { error: profileError } = await createUserProfile(userProfile)
+
+        if (profileError) {
+          console.error("Error creating user profile:", profileError)
+        }
+      }
 
       setSuccess("Account created successfully! Please check your email to verify your account.")
       setTimeout(() => {
         router.push("/auth/signin?message=Please check your email to verify your account")
       }, 2000)
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.")
-      console.error("Sign up error:", err)
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred. Please try again.")
     } finally {
       setLoading(false)
     }
-  }
-
-  const getPasswordStrengthColor = () => {
-    if (passwordStrength <= 2) return "bg-red-500"
-    if (passwordStrength <= 3) return "bg-yellow-500"
-    return "bg-green-500"
-  }
-
-  const getPasswordStrengthText = () => {
-    if (passwordStrength <= 2) return "Weak"
-    if (passwordStrength <= 3) return "Medium"
-    return "Strong"
   }
 
   return (
@@ -312,6 +321,32 @@ export default function SignUp() {
               {fieldErrors.email && <p className="text-sm text-red-600">{fieldErrors.email}</p>}
             </div>
 
+            {/* Phone Field */}
+            <div className="space-y-2">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone number (optional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  className={`block w-full pl-10 pr-3 py-2 border ${
+                    fieldErrors.phone ? "border-red-300" : "border-gray-300"
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                  placeholder="Enter your phone number"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  disabled={loading}
+                />
+              </div>
+              {fieldErrors.phone && <p className="text-sm text-red-600">{fieldErrors.phone}</p>}
+            </div>
+
             {/* Password Field */}
             <div className="space-y-2">
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
@@ -348,22 +383,6 @@ export default function SignUp() {
                   )}
                 </button>
               </div>
-
-              {/* Password Strength Indicator */}
-              {formData.password && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor()}`}
-                        style={{ width: `${(passwordStrength / 5) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-600">{getPasswordStrengthText()}</span>
-                  </div>
-                </div>
-              )}
-
               {fieldErrors.password && <p className="text-sm text-red-600">{fieldErrors.password}</p>}
             </div>
 
@@ -406,44 +425,27 @@ export default function SignUp() {
               {fieldErrors.confirmPassword && <p className="text-sm text-red-600">{fieldErrors.confirmPassword}</p>}
             </div>
 
-            {/* Checkboxes */}
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <input
-                  id="agreeToTerms"
-                  name="agreeToTerms"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  checked={formData.agreeToTerms}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                />
-                <label htmlFor="agreeToTerms" className="text-sm text-gray-700 leading-relaxed">
-                  I agree to the{" "}
-                  <Link href="/terms" className="text-blue-600 hover:text-blue-500 underline">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/privacy" className="text-blue-600 hover:text-blue-500 underline">
-                    Privacy Policy
-                  </Link>
-                </label>
-              </div>
-
-              <div className="flex items-start space-x-3">
-                <input
-                  id="subscribeNewsletter"
-                  name="subscribeNewsletter"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  checked={formData.subscribeNewsletter}
-                  onChange={handleInputChange}
-                  disabled={loading}
-                />
-                <label htmlFor="subscribeNewsletter" className="text-sm text-gray-700">
-                  Subscribe to our newsletter for exclusive offers and updates
-                </label>
-              </div>
+            {/* Terms Agreement */}
+            <div className="flex items-start space-x-3">
+              <input
+                id="agreeToTerms"
+                name="agreeToTerms"
+                type="checkbox"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                checked={formData.agreeToTerms}
+                onChange={handleInputChange}
+                disabled={loading}
+              />
+              <label htmlFor="agreeToTerms" className="text-sm text-gray-700 leading-relaxed">
+                I agree to the{" "}
+                <Link href="/terms" className="text-blue-600 hover:text-blue-500 underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-blue-600 hover:text-blue-500 underline">
+                  Privacy Policy
+                </Link>
+              </label>
             </div>
 
             {/* Submit Button */}
