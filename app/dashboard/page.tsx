@@ -159,7 +159,7 @@ export default function Dashboard() {
         make: brand,
         model: model,
         year: 2023 - (i % 3),
-        image: `https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400&h=300&fit=crop&auto=format`,
+        image: `/placeholder.svg?height=200&width=300`,
         pricePerDay: 80 + (userHash % 100) + i * 10,
         rating: 4.5 + ((i * 0.1) % 0.5),
         viewedAt: i === 0 ? "2 hours ago" : i === 1 ? "1 day ago" : "3 days ago",
@@ -207,7 +207,7 @@ export default function Dashboard() {
         make: brand,
         model: model,
         year: 2023 - (i % 2),
-        image: `https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=400&h=300&fit=crop&auto=format`,
+        image: `/placeholder.svg?height=200&width=300`,
         pricePerDay: 85 + (userHash % 120) + i * 15,
         rating: 4.6 + ((i * 0.1) % 0.4),
         category: categories[(userHash + i * 4) % categories.length],
@@ -246,7 +246,7 @@ export default function Dashboard() {
           carMake: brand,
           carModel: model,
           carYear: 2023 - (i % 2),
-          carImage: `https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400&h=300&fit=crop&auto=format`,
+          carImage: `/placeholder.svg?height=200&width=300`,
           startDate: startDate.toISOString().split("T")[0],
           endDate: endDate.toISOString().split("T")[0],
           location: locations[locationIndex],
@@ -412,7 +412,7 @@ export default function Dashboard() {
                           <div className="flex items-center space-x-4">
                             <div className="relative w-20 h-16 overflow-hidden rounded-lg flex-shrink-0">
                               <Image
-                                src={booking.carImage || "/placeholder.svg?height=64&width=80"}
+                                src={booking.carImage || "/placeholder.svg"}
                                 alt={`${booking.carMake} ${booking.carModel}`}
                                 fill
                                 className="object-cover"
@@ -466,7 +466,7 @@ export default function Dashboard() {
                     <div key={car.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="relative w-full h-32 mb-3 rounded-lg overflow-hidden">
                         <Image
-                          src={car.image || "/placeholder.svg?height=128&width=300"}
+                          src={car.image || "/placeholder.svg"}
                           alt={`${car.make} ${car.model}`}
                           fill
                           className="object-cover"
@@ -544,7 +544,7 @@ export default function Dashboard() {
                       <div className="flex items-center space-x-3">
                         <div className="relative w-16 h-12 rounded overflow-hidden flex-shrink-0">
                           <Image
-                            src={car.image || "/placeholder.svg?height=48&width=64"}
+                            src={car.image || "/placeholder.svg"}
                             alt={`${car.make} ${car.model}`}
                             fill
                             className="object-cover"

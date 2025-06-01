@@ -14,91 +14,55 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { createClient } from "@supabase/supabase-js"
+import { useAuth } from "@/contexts/AuthContext"
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [userProfile, setUserProfile] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
     setMounted(true)
-    checkUser()
   }, [])
-
-  const checkUser = async () => {
-    try {
-      setLoading(true)
-      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-
-      // Get current session
-      const { data: sessionData } = await supabase.auth.getSession()
-
-      if (!sessionData.session) {
-        setUser(null)
-        setUserProfile(null)
-        setLoading(false)
-        return
-      }
-
-      // Get user data
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-
-      if (userError || !userData.user) {
-        console.error("Error fetching user:", userError)
-        setUser(null)
-        setUserProfile(null)
-        setLoading(false)
-        return
-      }
-
-      setUser(userData.user)
-
-      // Get user profile from database
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("auth_id", userData.user.id)
-        .single()
-
-      if (profileError) {
-        console.error("Error fetching profile:", profileError)
-      } else {
-        setUserProfile(profileData)
-      }
-    } catch (error) {
-      console.error("NavBar error:", error)
-      setUser(null)
-      setUserProfile(null)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleSignOut = async () => {
     try {
-      setLoading(true)
-      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-
-      await supabase.auth.signOut()
-      setUser(null)
-      setUserProfile(null)
-
-      router.push("/")
-      router.refresh()
+      await signOut()
+      closeMenu()
     } catch (error) {
       console.error("Error signing out:", error)
-    } finally {
-      setLoading(false)
-      closeMenu()
     }
   }
 
   const closeMenu = () => setIsOpen(false)
+
+  const getUserDisplayName = () => {
+    if (user?.user_metadata?.first_name) {
+      return user.user_metadata.first_name
+    }
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name
+    }
+    if (user?.email) {
+      return user.email.split("@")[0]
+    }
+    return "User"
+  }
+
+  const getUserInitials = () => {
+    if (user?.user_metadata?.first_name) {
+      return user.user_metadata.first_name[0].toUpperCase()
+    }
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name[0].toUpperCase()
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase()
+    }
+    return "U"
+  }
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -176,26 +140,16 @@ const NavBar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={userProfile?.profile_image_url || ""} alt={userProfile?.full_name || ""} />
-                      <AvatarFallback className="bg-blue-600 text-white">
-                        {userProfile?.first_name?.[0]?.toUpperCase() ||
-                          user?.user_metadata?.first_name?.[0]?.toUpperCase() ||
-                          "U"}
-                      </AvatarFallback>
+                      <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt={getUserDisplayName()} />
+                      <AvatarFallback className="bg-blue-600 text-white">{getUserInitials()}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">
-                        {userProfile?.full_name ||
-                          `${userProfile?.first_name || user?.user_metadata?.first_name || ""} ${userProfile?.last_name || user?.user_metadata?.last_name || ""}`.trim() ||
-                          "User"}
-                      </p>
-                      <p className="w-[200px] truncate text-sm text-muted-foreground">
-                        {userProfile?.email || user?.email}
-                      </p>
+                      <p className="font-medium">{getUserDisplayName()}</p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">{user?.email}</p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
@@ -270,20 +224,12 @@ const NavBar = () => {
                 {/* User Info */}
                 <div className="flex items-center space-x-3 px-3 py-2">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={userProfile?.profile_image_url || ""} alt={userProfile?.full_name || ""} />
-                    <AvatarFallback className="bg-blue-600 text-white">
-                      {userProfile?.first_name?.[0]?.toUpperCase() ||
-                        user?.user_metadata?.first_name?.[0]?.toUpperCase() ||
-                        "U"}
-                    </AvatarFallback>
+                    <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt={getUserDisplayName()} />
+                    <AvatarFallback className="bg-blue-600 text-white">{getUserInitials()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium text-gray-900">
-                      {userProfile?.full_name ||
-                        `${userProfile?.first_name || user?.user_metadata?.first_name || ""} ${userProfile?.last_name || user?.user_metadata?.last_name || ""}`.trim() ||
-                        "User"}
-                    </p>
-                    <p className="text-sm text-gray-500">{userProfile?.email || user?.email}</p>
+                    <p className="font-medium text-gray-900">{getUserDisplayName()}</p>
+                    <p className="text-sm text-gray-500">{user?.email}</p>
                   </div>
                 </div>
 
