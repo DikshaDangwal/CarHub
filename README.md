@@ -95,7 +95,7 @@ Whether you're planning a road trip, replacing a car temporarily, or exploring e
 
 ## 👨‍💻 Author
 
-Made with ❤️ by **Ayush Dangwal**  
+Made with ❤️ by **Diksha Dangwal**  
 🔗 [Live App](https://v-carhub.vercel.app/)
 
 ---
