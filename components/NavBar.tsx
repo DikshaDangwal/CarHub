@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { Menu, X, User, LogOut, LayoutDashboard, UserCircle } from "lucide-react"
 import Logo from "./Logo"
-import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -15,36 +14,87 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { signOut as authSignOut } from "@/lib/auth"
+import { createClient } from "@supabase/supabase-js"
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { user, userProfile, loading, signOut } = useAuth()
+  const [user, setUser] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
     setMounted(true)
+    checkUser()
   }, [])
 
-  const handleSignOut = async () => {
+  const checkUser = async () => {
     try {
-      // Use the auth library's signOut function
-      const { error } = await authSignOut()
+      setLoading(true)
+      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
-      if (error) {
-        console.error("Error signing out:", error)
+      // Get current session
+      const { data: sessionData } = await supabase.auth.getSession()
+
+      if (!sessionData.session) {
+        setUser(null)
+        setUserProfile(null)
+        setLoading(false)
         return
       }
 
-      // Also call the context signOut to clear local state
-      await signOut()
+      // Get user data
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+
+      if (userError || !userData.user) {
+        console.error("Error fetching user:", userError)
+        setUser(null)
+        setUserProfile(null)
+        setLoading(false)
+        return
+      }
+
+      setUser(userData.user)
+
+      // Get user profile from database
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("auth_id", userData.user.id)
+        .single()
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError)
+      } else {
+        setUserProfile(profileData)
+      }
+    } catch (error) {
+      console.error("NavBar error:", error)
+      setUser(null)
+      setUserProfile(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      setLoading(true)
+      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
+      await supabase.auth.signOut()
+      setUser(null)
+      setUserProfile(null)
 
       router.push("/")
       router.refresh()
     } catch (error) {
       console.error("Error signing out:", error)
+    } finally {
+      setLoading(false)
+      closeMenu()
     }
   }
 
@@ -56,13 +106,6 @@ const NavBar = () => {
     { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
   ]
-
-  const userNavLinks = user
-    ? [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/profile", label: "Profile", icon: UserCircle },
-      ]
-    : []
 
   if (!mounted) {
     return (
@@ -100,7 +143,7 @@ const NavBar = () => {
         <div className="hidden lg:flex items-center space-x-4">
           {loading ? (
             <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
-          ) : user && userProfile ? (
+          ) : user ? (
             <div className="flex items-center space-x-4">
               {/* Dashboard Link */}
               <Link
@@ -133,9 +176,11 @@ const NavBar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={userProfile.profile_image_url || ""} alt={userProfile.full_name || ""} />
+                      <AvatarImage src={userProfile?.profile_image_url || ""} alt={userProfile?.full_name || ""} />
                       <AvatarFallback className="bg-blue-600 text-white">
-                        {userProfile.first_name?.[0]?.toUpperCase() || "U"}
+                        {userProfile?.first_name?.[0]?.toUpperCase() ||
+                          user?.user_metadata?.first_name?.[0]?.toUpperCase() ||
+                          "U"}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -143,8 +188,14 @@ const NavBar = () => {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">{userProfile.full_name}</p>
-                      <p className="w-[200px] truncate text-sm text-muted-foreground">{userProfile.email}</p>
+                      <p className="font-medium">
+                        {userProfile?.full_name ||
+                          `${userProfile?.first_name || user?.user_metadata?.first_name || ""} ${userProfile?.last_name || user?.user_metadata?.last_name || ""}`.trim() ||
+                          "User"}
+                      </p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                        {userProfile?.email || user?.email}
+                      </p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
@@ -214,19 +265,25 @@ const NavBar = () => {
                 <div className="w-full h-10 bg-gray-200 animate-pulse rounded"></div>
                 <div className="w-full h-10 bg-gray-200 animate-pulse rounded"></div>
               </div>
-            ) : user && userProfile ? (
+            ) : user ? (
               <div className="border-t border-gray-200 pt-4 space-y-2">
                 {/* User Info */}
                 <div className="flex items-center space-x-3 px-3 py-2">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={userProfile.profile_image_url || ""} alt={userProfile.full_name || ""} />
+                    <AvatarImage src={userProfile?.profile_image_url || ""} alt={userProfile?.full_name || ""} />
                     <AvatarFallback className="bg-blue-600 text-white">
-                      {userProfile.first_name?.[0]?.toUpperCase() || "U"}
+                      {userProfile?.first_name?.[0]?.toUpperCase() ||
+                        user?.user_metadata?.first_name?.[0]?.toUpperCase() ||
+                        "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium text-gray-900">{userProfile.full_name}</p>
-                    <p className="text-sm text-gray-500">{userProfile.email}</p>
+                    <p className="font-medium text-gray-900">
+                      {userProfile?.full_name ||
+                        `${userProfile?.first_name || user?.user_metadata?.first_name || ""} ${userProfile?.last_name || user?.user_metadata?.last_name || ""}`.trim() ||
+                        "User"}
+                    </p>
+                    <p className="text-sm text-gray-500">{userProfile?.email || user?.email}</p>
                   </div>
                 </div>
 
@@ -260,10 +317,7 @@ const NavBar = () => {
 
                 {/* Logout */}
                 <button
-                  onClick={() => {
-                    handleSignOut()
-                    closeMenu()
-                  }}
+                  onClick={handleSignOut}
                   className="flex items-center space-x-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors w-full text-left"
                 >
                   <LogOut className="w-5 h-5" />
