@@ -1,270 +1,288 @@
 "use client"
 
-import Image from "next/image"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useState } from "react"
-import { useAuth } from "@/contexts/AuthContext"
 import { useRouter, usePathname } from "next/navigation"
+import { Menu, X, User, LogOut, LayoutDashboard, UserCircle } from "lucide-react"
 import Logo from "./Logo"
+import { useAuth } from "@/contexts/AuthContext"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { signOut as authSignOut } from "@/lib/auth"
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { user, userProfile, loading, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
-  const handleLogout = async () => {
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleSignOut = async () => {
     try {
+      // Use the auth library's signOut function
+      const { error } = await authSignOut()
+
+      if (error) {
+        console.error("Error signing out:", error)
+        return
+      }
+
+      // Also call the context signOut to clear local state
       await signOut()
+
       router.push("/")
       router.refresh()
     } catch (error) {
-      console.error("Logout error:", error)
+      console.error("Error signing out:", error)
     }
   }
 
-  const isActive = (path: string) => pathname === path
+  const closeMenu = () => setIsOpen(false)
 
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/cars", label: "Cars" },
     { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
-    { href: "/help", label: "Help" },
   ]
 
-  return (
-    <header className="w-full absolute z-10">
-      <nav className="max-w-[1440px] mx-auto flex justify-between items-center sm:px-16 px-6 py-4 bg-transparent">
-        {/* Logo - wrapped in Link */}
-        <Link href="/" className="flex justify-center items-center">
+  const userNavLinks = user
+    ? [
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/profile", label: "Profile", icon: UserCircle },
+      ]
+    : []
+
+  if (!mounted) {
+    return (
+      <header className="w-full absolute z-50 bg-white/90 backdrop-blur-sm border-b border-gray-200">
+        <nav className="max-w-[1440px] mx-auto flex justify-between items-center sm:px-16 px-6 py-4">
           <Logo />
-        </Link>
+          <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
+        </nav>
+      </header>
+    )
+  }
+
+  return (
+    <header className="w-full absolute z-50 bg-white/90 backdrop-blur-sm border-b border-gray-200">
+      <nav className="max-w-[1440px] mx-auto flex justify-between items-center sm:px-16 px-6 py-4">
+        {/* Logo */}
+        <Logo />
 
         {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center space-x-6">
-          {/* Main Navigation */}
-          <div className="flex items-center space-x-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                  isActive(link.href) ? "text-blue-600 bg-blue-50 px-3 py-2 rounded-md" : "text-gray-700"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
+        <div className="hidden lg:flex items-center space-x-8">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`text-gray-700 hover:text-blue-600 transition-colors font-medium ${
+                pathname === link.href ? "text-blue-600" : ""
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
 
-          {/* Separator */}
-          <div className="h-6 w-px bg-gray-300" />
-
-          {/* User Navigation */}
+        {/* Desktop Auth Section */}
+        <div className="hidden lg:flex items-center space-x-4">
           {loading ? (
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-          ) : user ? (
+            <div className="w-32 h-10 bg-gray-200 animate-pulse rounded"></div>
+          ) : user && userProfile ? (
             <div className="flex items-center space-x-4">
-              {/* Dashboard Button */}
+              {/* Dashboard Link */}
               <Link
                 href="/dashboard"
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive("/dashboard") ? "bg-blue-600 text-white" : "text-blue-600 hover:bg-blue-50"
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                  pathname === "/dashboard"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
+                <LayoutDashboard className="w-4 h-4" />
                 <span>Dashboard</span>
               </Link>
 
-              {/* Profile Button */}
+              {/* Profile Link */}
               <Link
                 href="/profile"
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive("/profile") ? "bg-green-600 text-white" : "text-green-600 hover:bg-green-50"
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                  pathname === "/profile"
+                    ? "bg-green-600 text-white"
+                    : "text-gray-700 hover:text-green-600 hover:bg-green-50"
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
+                <UserCircle className="w-4 h-4" />
                 <span>Profile</span>
               </Link>
 
-              {/* User Avatar & Name */}
-              <div className="flex items-center space-x-3">
-                <div className="relative h-8 w-8">
-                  <Image
-                    src={userProfile?.profile_image_url || "/placeholder.svg?height=32&width=32"}
-                    alt="Profile"
-                    fill
-                    className="rounded-full object-cover"
-                  />
-                </div>
-                <span className="text-sm font-medium text-gray-700">
-                  {userProfile?.full_name || userProfile?.first_name || "User"}
-                </span>
-              </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
-              >
-                Logout
-              </button>
+              {/* User Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={userProfile.profile_image_url || ""} alt={userProfile.full_name || ""} />
+                      <AvatarFallback className="bg-blue-600 text-white">
+                        {userProfile.first_name?.[0]?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium">{userProfile.full_name}</p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">{userProfile.email}</p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard" className="cursor-pointer">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center space-x-4">
-              <Link href="/auth/signin" className="text-gray-700 hover:text-blue-600 text-sm font-medium">
-                Sign In
-              </Link>
-              <Link
-                href="/auth/signup"
-                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-              >
-                Sign Up
-              </Link>
+            <div className="flex items-center space-x-3">
+              <Button variant="ghost" asChild>
+                <Link href="/auth/signin">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/auth/signup">Signup</Link>
+              </Button>
             </div>
           )}
         </div>
 
-        {/* Mobile menu button */}
+        {/* Mobile Menu Button */}
         <div className="lg:hidden">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="text-gray-700 hover:text-blue-600 focus:outline-none focus:text-blue-600"
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {isOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
+          <Button variant="ghost" size="sm" onClick={() => setIsOpen(!isOpen)} className="p-2" aria-label="Toggle menu">
+            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
         </div>
       </nav>
 
-      {/* Mobile Navigation Menu */}
+      {/* Mobile Menu */}
       {isOpen && (
-        <div className="lg:hidden bg-white shadow-lg">
+        <div className="lg:hidden bg-white border-t border-gray-200 shadow-lg">
           <div className="px-6 py-4 space-y-4">
-            {/* Main Navigation */}
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`block text-base font-medium transition-colors py-2 ${
-                  isActive(link.href) ? "text-blue-600" : "text-gray-700 hover:text-blue-600"
-                }`}
-                onClick={() => setIsOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {/* Navigation Links */}
+            <div className="space-y-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={closeMenu}
+                  className={`block px-3 py-2 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-colors font-medium ${
+                    pathname === link.href ? "text-blue-600 bg-blue-50" : ""
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
 
-            {/* User Section */}
+            {/* Mobile Auth Section */}
             {loading ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+              <div className="space-y-2">
+                <div className="w-full h-10 bg-gray-200 animate-pulse rounded"></div>
+                <div className="w-full h-10 bg-gray-200 animate-pulse rounded"></div>
               </div>
-            ) : user ? (
-              <div className="border-t pt-4 space-y-4">
-                {/* User Profile Card */}
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="relative h-10 w-10">
-                    <Image
-                      src={userProfile?.profile_image_url || "/placeholder.svg?height=40&width=40"}
-                      alt="Profile"
-                      fill
-                      className="rounded-full object-cover"
-                    />
-                  </div>
+            ) : user && userProfile ? (
+              <div className="border-t border-gray-200 pt-4 space-y-2">
+                {/* User Info */}
+                <div className="flex items-center space-x-3 px-3 py-2">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={userProfile.profile_image_url || ""} alt={userProfile.full_name || ""} />
+                    <AvatarFallback className="bg-blue-600 text-white">
+                      {userProfile.first_name?.[0]?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
-                    <p className="font-medium text-gray-900">
-                      {userProfile?.full_name || userProfile?.first_name || "User"}
-                    </p>
-                    <p className="text-sm text-gray-500">{userProfile?.email}</p>
+                    <p className="font-medium text-gray-900">{userProfile.full_name}</p>
+                    <p className="text-sm text-gray-500">{userProfile.email}</p>
                   </div>
                 </div>
 
-                {/* Dashboard & Profile Buttons */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Link
-                    href="/dashboard"
-                    className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                      isActive("/dashboard") ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                    }`}
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                      />
-                    </svg>
-                    <span>Dashboard</span>
-                  </Link>
-                  <Link
-                    href="/profile"
-                    className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                      isActive("/profile") ? "bg-green-600 text-white" : "bg-green-50 text-green-600 hover:bg-green-100"
-                    }`}
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                    <span>Profile</span>
-                  </Link>
-                </div>
+                {/* Dashboard Link */}
+                <Link
+                  href="/dashboard"
+                  onClick={closeMenu}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                    pathname === "/dashboard"
+                      ? "text-blue-600 bg-blue-50"
+                      : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  <span className="font-medium">Dashboard</span>
+                </Link>
 
-                {/* Logout Button */}
+                {/* Profile Link */}
+                <Link
+                  href="/profile"
+                  onClick={closeMenu}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                    pathname === "/profile"
+                      ? "text-green-600 bg-green-50"
+                      : "text-gray-700 hover:text-green-600 hover:bg-green-50"
+                  }`}
+                >
+                  <UserCircle className="w-5 h-5" />
+                  <span className="font-medium">Profile</span>
+                </Link>
+
+                {/* Logout */}
                 <button
                   onClick={() => {
-                    handleLogout()
-                    setIsOpen(false)
+                    handleSignOut()
+                    closeMenu()
                   }}
-                  className="w-full bg-red-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                  className="flex items-center space-x-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors w-full text-left"
                 >
-                  Sign Out
+                  <LogOut className="w-5 h-5" />
+                  <span className="font-medium">Logout</span>
                 </button>
               </div>
             ) : (
-              <div className="border-t pt-4 space-y-3">
-                <Link
-                  href="/auth/signin"
-                  className="block w-full text-center bg-gray-100 text-gray-700 px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/auth/signup"
-                  className="block w-full text-center bg-blue-600 text-white px-4 py-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Sign Up
-                </Link>
+              <div className="border-t border-gray-200 pt-4 space-y-2">
+                <Button variant="ghost" asChild className="w-full justify-start">
+                  <Link href="/auth/signin" onClick={closeMenu}>
+                    <User className="mr-2 h-4 w-4" />
+                    Login
+                  </Link>
+                </Button>
+                <Button asChild className="w-full">
+                  <Link href="/auth/signup" onClick={closeMenu}>
+                    Signup
+                  </Link>
+                </Button>
               </div>
             )}
           </div>

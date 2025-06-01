@@ -2,11 +2,15 @@
 
 import { useState, useMemo } from "react"
 import Image from "next/image"
-import { Search, Filter, Grid, List, Star, Heart, Fuel, Settings, Users, MapPin } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Search, Filter, Grid, List, Star, Heart, Fuel, Settings, Users, MapPin, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/AuthContext"
+import CarDetailsModal from "./CarDetailsModal"
 
 interface Car {
   id: string
@@ -40,7 +44,7 @@ const demoCarData: Car[] = [
     image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400&h=250&fit=crop",
     rating: 4.8,
     reviews: 124,
-    features: ["Sport Mode", "Premium Sound", "Navigation"],
+    features: ["Sport Mode", "Premium Sound", "Navigation", "Leather Seats"],
     location: "New York, NY",
     available: true,
   },
@@ -57,7 +61,7 @@ const demoCarData: Car[] = [
     image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=400&h=250&fit=crop",
     rating: 4.9,
     reviews: 89,
-    features: ["Autopilot", "Supercharging", "Premium Interior"],
+    features: ["Autopilot", "Supercharging", "Premium Interior", "Glass Roof"],
     location: "Los Angeles, CA",
     available: true,
   },
@@ -74,7 +78,7 @@ const demoCarData: Car[] = [
     image: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400&h=250&fit=crop",
     rating: 4.7,
     reviews: 156,
-    features: ["Luxury Interior", "Advanced Safety", "Premium Sound"],
+    features: ["Luxury Interior", "Advanced Safety", "Premium Sound", "Ambient Lighting"],
     location: "Miami, FL",
     available: true,
   },
@@ -91,7 +95,7 @@ const demoCarData: Car[] = [
     image: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=400&h=250&fit=crop",
     rating: 4.6,
     reviews: 98,
-    features: ["AWD", "Panoramic Roof", "Premium Interior"],
+    features: ["AWD", "Panoramic Roof", "Premium Interior", "Cargo Space"],
     location: "Chicago, IL",
     available: true,
   },
@@ -108,7 +112,7 @@ const demoCarData: Car[] = [
     image: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=400&h=250&fit=crop",
     rating: 4.5,
     reviews: 203,
-    features: ["Fuel Efficient", "Reliable", "Safety Features"],
+    features: ["Fuel Efficient", "Reliable", "Safety Features", "Spacious"],
     location: "Seattle, WA",
     available: true,
   },
@@ -125,7 +129,7 @@ const demoCarData: Car[] = [
     image: "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?w=400&h=250&fit=crop",
     rating: 4.9,
     reviews: 67,
-    features: ["Sport Mode", "Premium Sound", "Panoramic Roof"],
+    features: ["Sport Mode", "Premium Sound", "Panoramic Roof", "Performance"],
     location: "San Francisco, CA",
     available: false,
   },
@@ -142,7 +146,7 @@ const demoCarData: Car[] = [
     image: "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=400&h=250&fit=crop",
     rating: 4.4,
     reviews: 145,
-    features: ["Fuel Efficient", "Compact", "Reliable"],
+    features: ["Fuel Efficient", "Compact", "Reliable", "Manual Transmission"],
     location: "Austin, TX",
     available: true,
   },
@@ -159,7 +163,7 @@ const demoCarData: Car[] = [
     image: "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=250&fit=crop",
     rating: 5.0,
     reviews: 23,
-    features: ["Supercar", "Track Mode", "Carbon Fiber"],
+    features: ["Supercar", "Track Mode", "Carbon Fiber", "V10 Engine"],
     location: "Las Vegas, NV",
     available: true,
   },
@@ -173,6 +177,12 @@ export default function CarCatalog() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [sortBy, setSortBy] = useState<"price" | "rating" | "name">("price")
   const [favorites, setFavorites] = useState<string[]>([])
+  const [selectedCar, setSelectedCar] = useState<Car | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const router = useRouter()
 
   const carTypes = ["All", "SUV", "Sedan", "Hatchback", "Coupe", "Convertible", "Electric", "Luxury"]
   const fuelTypes = ["All", "Gasoline", "Electric", "Hybrid", "Diesel"]
@@ -207,7 +217,57 @@ export default function CarCatalog() {
   }, [searchTerm, selectedType, selectedFuelType, priceRange, sortBy])
 
   const toggleFavorite = (carId: string) => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add cars to your favorites.",
+        variant: "destructive",
+      })
+      return
+    }
     setFavorites((prev) => (prev.includes(carId) ? prev.filter((id) => id !== carId) : [...prev, carId]))
+    toast({
+      title: favorites.includes(carId) ? "Removed from favorites" : "Added to favorites",
+      description: favorites.includes(carId)
+        ? "Car removed from your favorites list."
+        : "Car added to your favorites list.",
+    })
+  }
+
+  const handleViewDetails = (car: Car) => {
+    setSelectedCar(car)
+    setIsModalOpen(true)
+  }
+
+  const handleBookNow = (car: Car) => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to book a car.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
+
+    if (!car.available) {
+      toast({
+        title: "Car unavailable",
+        description: "This car is currently not available for booking.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Here you would typically redirect to a booking page or open a booking modal
+    toast({
+      title: "Booking initiated",
+      description: `Starting booking process for ${car.make} ${car.model}`,
+    })
+
+    // For demo purposes, we'll just show a success message
+    // In a real app, you'd redirect to a booking page
+    router.push(`/booking?car=${car.id}`)
   }
 
   const clearFilters = () => {
@@ -294,11 +354,11 @@ export default function CarCatalog() {
           </div>
         </div>
 
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-6 gap-4">
           <Button variant="outline" onClick={clearFilters}>
             Clear Filters
           </Button>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">Sort by:</label>
               <select
@@ -368,7 +428,7 @@ export default function CarCatalog() {
                   />
                   <button
                     onClick={() => toggleFavorite(car.id)}
-                    className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-50"
+                    className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
                   >
                     <Heart
                       className={`w-4 h-4 ${
@@ -428,14 +488,15 @@ export default function CarCatalog() {
 
                     <div className={`${viewMode === "list" ? "text-right ml-4" : "mt-3"}`}>
                       <div className="text-2xl font-bold text-green-600 mb-2">${car.pricePerDay}/day</div>
-                      <Button className="w-full" disabled={!car.available}>
-                        {car.available ? "Book Now" : "Unavailable"}
-                      </Button>
-                      {viewMode === "grid" && (
-                        <Button variant="outline" className="w-full mt-2" size="sm">
+                      <div className="space-y-2">
+                        <Button className="w-full" disabled={!car.available} onClick={() => handleBookNow(car)}>
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          {car.available ? "Book Now" : "Unavailable"}
+                        </Button>
+                        <Button variant="outline" className="w-full" size="sm" onClick={() => handleViewDetails(car)}>
                           View Details
                         </Button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -453,6 +514,17 @@ export default function CarCatalog() {
           <Button onClick={clearFilters}>Clear All Filters</Button>
         </div>
       )}
+
+      {/* Car Details Modal */}
+      <CarDetailsModal
+        car={selectedCar}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setSelectedCar(null)
+        }}
+        onBook={handleBookNow}
+      />
     </div>
   )
 }
