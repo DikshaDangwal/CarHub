@@ -39,25 +39,6 @@ export default function SignInPage() {
     }
   }
 
-  const handleDemoLogin = async () => {
-    setEmail("demo@example.com")
-    setPassword("demo123")
-    setError("")
-    setLoading(true)
-
-    try {
-      const { error } = await signIn("demo@example.com", "demo123")
-
-      if (error) {
-        setError(error.message || "Failed to sign in")
-      }
-    } catch (err: any) {
-      setError("An unexpected error occurred")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <ProtectedRoute requireAuth={false}>
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -69,22 +50,6 @@ export default function SignInPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800 mb-2">
-                <strong>Demo Mode:</strong> This is a demonstration. You can use any email/password or click the demo
-                button.
-              </p>
-              <Button
-                onClick={handleDemoLogin}
-                variant="outline"
-                size="sm"
-                className="w-full bg-transparent"
-                disabled={loading}
-              >
-                Try Demo Login
-              </Button>
-            </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">

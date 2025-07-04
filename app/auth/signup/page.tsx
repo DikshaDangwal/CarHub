@@ -3,7 +3,6 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,17 +14,16 @@ import ProtectedRoute from "@/components/ProtectedRoute"
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
-    firstName: "",
-    lastName: "",
     phone: "",
   })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
-  const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -38,14 +36,13 @@ export default function SignUpPage() {
     e.preventDefault()
     setError("")
 
-    // Validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       return
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long")
+      setError("Password must be at least 6 characters")
       return
     }
 
@@ -55,45 +52,11 @@ export default function SignUpPage() {
       const userData = {
         first_name: formData.firstName,
         last_name: formData.lastName,
-        full_name: `${formData.firstName} ${formData.lastName}`.trim(),
+        full_name: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
       }
 
       const { error } = await signUp(formData.email, formData.password, userData)
-
-      if (error) {
-        setError(error.message || "Failed to create account")
-      }
-    } catch (err: any) {
-      setError("An unexpected error occurred")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDemoSignup = async () => {
-    const demoData = {
-      email: "newuser@example.com",
-      password: "demo123",
-      confirmPassword: "demo123",
-      firstName: "New",
-      lastName: "User",
-      phone: "+1234567890",
-    }
-
-    setFormData(demoData)
-    setError("")
-    setLoading(true)
-
-    try {
-      const userData = {
-        first_name: demoData.firstName,
-        last_name: demoData.lastName,
-        full_name: `${demoData.firstName} ${demoData.lastName}`.trim(),
-        phone: demoData.phone,
-      }
-
-      const { error } = await signUp(demoData.email, demoData.password, userData)
 
       if (error) {
         setError(error.message || "Failed to create account")
@@ -114,21 +77,6 @@ export default function SignUpPage() {
             <CardDescription className="text-center">Enter your information to create a new account</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800 mb-2">
-                <strong>Demo Mode:</strong> This is a demonstration. Click the demo button to auto-fill the form.
-              </p>
-              <Button
-                onClick={handleDemoSignup}
-                variant="outline"
-                size="sm"
-                className="w-full bg-transparent"
-                disabled={loading}
-              >
-                Try Demo Signup
-              </Button>
-            </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">
@@ -221,7 +169,7 @@ export default function SignUpPage() {
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Creating Account..." : "Create Account"}
+                {loading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
 
