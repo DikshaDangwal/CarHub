@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext"
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { user, userProfile, loading, signOut } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -39,12 +39,6 @@ const NavBar = () => {
   const closeMenu = () => setIsOpen(false)
 
   const getUserDisplayName = () => {
-    if (userProfile?.full_name) {
-      return userProfile.full_name
-    }
-    if (userProfile?.first_name) {
-      return userProfile.first_name
-    }
     if (user?.user_metadata?.first_name) {
       return user.user_metadata.first_name
     }
@@ -58,9 +52,6 @@ const NavBar = () => {
   }
 
   const getUserInitials = () => {
-    if (userProfile?.first_name) {
-      return userProfile.first_name[0].toUpperCase()
-    }
     if (user?.user_metadata?.first_name) {
       return user.user_metadata.first_name[0].toUpperCase()
     }
@@ -149,10 +140,7 @@ const NavBar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage
-                        src={userProfile?.profile_image_url || user?.user_metadata?.avatar_url || ""}
-                        alt={getUserDisplayName()}
-                      />
+                      <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt={getUserDisplayName()} />
                       <AvatarFallback className="bg-blue-600 text-white">{getUserInitials()}</AvatarFallback>
                     </Avatar>
                   </Button>
@@ -161,9 +149,7 @@ const NavBar = () => {
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1 leading-none">
                       <p className="font-medium">{getUserDisplayName()}</p>
-                      <p className="w-[200px] truncate text-sm text-muted-foreground">
-                        {userProfile?.email || user?.email}
-                      </p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">{user?.email}</p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
@@ -238,15 +224,12 @@ const NavBar = () => {
                 {/* User Info */}
                 <div className="flex items-center space-x-3 px-3 py-2">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={userProfile?.profile_image_url || user?.user_metadata?.avatar_url || ""}
-                      alt={getUserDisplayName()}
-                    />
+                    <AvatarImage src={user?.user_metadata?.avatar_url || ""} alt={getUserDisplayName()} />
                     <AvatarFallback className="bg-blue-600 text-white">{getUserInitials()}</AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium text-gray-900">{getUserDisplayName()}</p>
-                    <p className="text-sm text-gray-500">{userProfile?.email || user?.email}</p>
+                    <p className="text-sm text-gray-500">{user?.email}</p>
                   </div>
                 </div>
 
